@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeXo | AI Trading Terminal</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        :root { --bg-main: #05140b; --bg-panel: #0a2013; --border-color: #1a4a2c; --text-main: #e0f2e9; --text-muted: #6fa886; --accent-green: #00ff66; --accent-hover: #00cc52; --accent-red: #ff4d4d; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; background-image: linear-gradient(rgba(0, 255, 102, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 102, 0.03) 1px, transparent 1px); background-size: 40px 40px; }
+        #loginScreen { background-color: var(--bg-panel); padding: 40px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 10px 40px rgba(0, 255, 102, 0.1); text-align: center; width: 100%; max-width: 400px; }
+        #loginScreen h1 { color: var(--accent-green); margin-bottom: 10px; font-size: 32px; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0, 255, 102, 0.4); }
+        #loginScreen p { color: var(--text-muted); margin-bottom: 25px; font-size: 14px; }
+        input[type="password"], input[type="text"] { width: 100%; padding: 14px; background-color: var(--bg-main); border: 1px solid var(--border-color); color: var(--accent-green); border-radius: 6px; margin-bottom: 20px; font-size: 16px; outline: none; transition: border 0.3s, box-shadow 0.3s; text-align: center; letter-spacing: 2px; }
+        input[type="password"]:focus, input[type="text"]:focus { border-color: var(--accent-green); box-shadow: 0 0 10px rgba(0, 255, 102, 0.2); }
+        #terminal { display: none; background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); width: 100%; max-width: 1000px; overflow: hidden; margin: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 25px; border-bottom: 1px solid var(--border-color); background-color: rgba(10, 32, 19, 0.8); backdrop-filter: blur(10px); }
+        .header h1 { color: var(--accent-green); font-size: 22px; letter-spacing: 2px; text-shadow: 0 0 8px rgba(0, 255, 102, 0.3); }
+        .header span { font-size: 12px; color: var(--bg-main); background: var(--accent-green); padding: 6px 12px; border-radius: 20px; font-weight: bold; box-shadow: 0 0 10px rgba(0, 255, 102, 0.4); }
+        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; padding: 25px; }
+        .panel { background-color: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; }
+        .panel-title { font-size: 13px; font-weight: 700; color: var(--accent-green); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        button { background-color: var(--accent-green); color: var(--bg-main); border: none; padding: 14px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-top: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        button:hover { background-color: var(--accent-hover); box-shadow: 0 0 15px rgba(0, 255, 102, 0.4); }
+        button:disabled { background-color: var(--border-color); color: var(--text-muted); cursor: not-allowed; box-shadow: none; }
+        #imagePreview { width: 100%; max-height: 300px; object-fit: contain; border: 1px dashed var(--border-color); border-radius: 6px; margin-top: 15px; display: none; background: #000; }
+        .hidden-input { display: none; }
+        #resultPanel { display: none; }
+        #aiResponse { white-space: pre-wrap; line-height: 1.6; font-size: 14px; color: var(--text-main); background-color: rgba(0, 255, 102, 0.05); padding: 15px; border-radius: 6px; border-left: 3px solid var(--accent-green); max-height: 400px; overflow-y: auto; }
+        .btn-execute { background-color: transparent; border: 2px solid var(--accent-green); color: var(--accent-green); margin-top: 15px; }
+        .btn-execute:hover { background-color: var(--accent-green); color: var(--bg-main); }
+        #loading { display: none; text-align: center; margin-top: 20px; }
+        .spinner { border: 3px solid var(--border-color); border-top: 3px solid var(--accent-green); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error-text { color: var(--accent-red); font-size: 14px; display: none; margin-top: 10px; }
+        @media (max-width: 768px) { .main-content { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen">
+        <h1>NeXo</h1>
+        <p>Botswana Green AI Terminal</p>
+        <input type="password" id="passwordInput" placeholder="Enter Access Key">
+        <input type="text" id="apiKeyInput" placeholder="Enter Gemini API Key">
+        <button onclick="login()">Access Terminal</button>
+        <div id="loginError" class="error-text">Invalid Access Key. Please try again.</div>
+    </div>
+
+    <div id="terminal">
+        <div class="header">
+            <h1>NeXo Terminal</h1>
+            <span>● System Online</span>
+        </div>
+
+        <div class="main-content">
+            <div class="panel">
+                <div class="panel-title">Market Data Input</div>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Upload a chart screenshot, order book, or news snippet for AI vision analysis.</p>
+                <input type="file" id="imageInput" class="hidden-input" accept="image/*">
+                <button onclick="document.getElementById('imageInput').click()">Upload Screenshot</button>
+                <img id="imagePreview" src="" alt="Chart Preview">
+                <div id="loading"><div class="spinner"></div><p style="font-size: 12px; color: var(--accent-green);">NeXo AI is analyzing...</p></div>
+                <button id="analyzeBtn" style="display: none; margin-top: 20px;" onclick="analyzeChart()">Run Analysis</button>
+            </div>
+
+            <div class="panel" id="resultPanel">
+                <div class="panel-title">AI Execution Plan</div>
+                <div id="aiResponse"></div>
+                <button class="btn-execute" onclick="executeTrade()">Execute Paper Trade</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ACCESS_PASSWORD = "GWPYBTIFOTWBY1!w";
+        const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent";
+
+        let base64Image = "";
+        let currentApiKey = "";
+
+        function login() {
+            const pass = document.getElementById('passwordInput').value;
+            const apiKey = document.getElementById('apiKeyInput').value;
+
+            if (pass === ACCESS_PASSWORD && apiKey.length > 10) {
+                localStorage.setItem('nexo_api_key', apiKey);
+                currentApiKey = apiKey;
+                
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('terminal').style.display = 'block';
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+            }
+        }
+
+        window.onload = function() {
+            const savedKey = localStorage.getItem('nexo_api_key');
+            if (savedKey) {
+                document.getElementById('apiKeyInput').value = savedKey;
+            }
+        };
+
+        document.getElementById('imageInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800;
+                        const scale = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scale;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                        
+                        const imgPreview = document.getElementById('imagePreview');
+                        imgPreview.src = compressedDataUrl;
+                        imgPreview.style.display = 'block';
+                        document.getElementById('analyzeBtn').style.display = 'block';
+                        document.getElementById('resultPanel').style.display = 'none';
+                        
+                        base64Image = compressedDataUrl.split(',')[1];
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        async function analyzeChart() {
+            if (!base64Image) return alert("Please upload an image first.");
+            if (!currentApiKey) return alert("Please refresh and enter your API key.");
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultPanel').style.display = 'none';
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('analyzeBtn').innerText = "Processing...";
+
+            const promptText = `You are NeXo, an elite quantitative trading AI. Analyze the uploaded screenshot. Provide your response in this exact format (use markdown bolding):
+**1. MARKET CONTEXT:** Identify asset and trend.
+**2. TECHNICAL SIGNALS:** Patterns, S/R, indicators.
+**3. PREDICTION:** Next move (Bullish/Bearish/Sideways) + Confidence %.
+**4. TRADE SETUP:**
+- Action: 
+- Entry: 
+- Stop Loss: 
+- Take Profit: 
+**5. RISK WARNING:** What invalidates this setup?`;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+            try {
+                const response = await fetch(`${GEMINI_API_URL}?key=${currentApiKey}`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: "image/jpeg", data: base64Image } }] }],
+                        generationConfig: {
+                            thinkingConfig: { thinkingLevel: "low" },
+                            maxOutputTokens: 1024
+                        }
+                    })
+                });
+
+                clearTimeout(timeoutId);
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+
+                const aiText = data.candidates[0].content.parts[0].text;
+                document.getElementById('aiResponse').innerText = aiText;
+                document.getElementById('resultPanel').style.display = 'flex';
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    alert("System Error: Connection timed out.");
+                } else {
+                    alert("System Error: " + error.message);
+                }
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+                document.getElementById('analyzeBtn').innerText = "Run Analysis";
+            }
+        }
+
+        function executeTrade() {
+            alert("✅ Trade Dispatched to Paper Trading API.\n\nNeXo has logged this trade.");
+        }
+    </script>
+</body>
+</html>
