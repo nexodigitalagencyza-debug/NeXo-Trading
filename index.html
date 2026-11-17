@@ -158,10 +158,14 @@
             const timeoutId = setTimeout(() => controller.abort(), 20000);
 
             try {
-                const response = await fetch(`${GEMINI_API_URL}?key=${currentApiKey}`, {
+                // FIX: Key is now sent in the header (x-goog-api-key) instead of the URL
+                const response = await fetch(GEMINI_API_URL, {
                     method: 'POST',
                     mode: 'cors',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': currentApiKey
+                    },
                     signal: controller.signal,
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: "image/jpeg", data: base64Image } }] }],
